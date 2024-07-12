@@ -9,8 +9,10 @@ export const config = {
   filter: {
     header: {},
   },
-  sinkType: "console",
-  sinkOptions: {},
+  sinkType: "postgres",
+  sinkOptions: {
+    tableName: "liquidations",
+  },
 };
 
 export default function transform(block) {
