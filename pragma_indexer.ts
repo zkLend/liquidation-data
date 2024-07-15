@@ -15,9 +15,10 @@ const SUBMITTED_SPOT_ENTRY_SELECTOR =
   `0x0280bb2099800026f90c334a3a23888ffe718a2920ffbbf4f44c6d3d5efb613c`;
 const SUBMITTED_SPOT_ENTRY_EVENT_DATA_LENGTH = 6;
 
-interface SubmittedSpotEntry {
+export interface SubmittedSpotEntry {
   block_timestamp: string;
   timestamp: `0x${string}`;
+  event_index: number;
   source: `0x${string}`;
   publisher: `0x${string}`;
   pair_id: `0x${string}`;
@@ -78,6 +79,7 @@ export default function transform({ header, events }: Block) {
   }
 
   const submittedSpotEntryEvents: SubmittedSpotEntry[] = [];
+  let eventIndex = 0;
 
   for (
     const {
@@ -117,6 +119,7 @@ export default function transform({ header, events }: Block) {
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
         block_timestamp,
         timestamp,
+        event_index: eventIndex,
         source,
         publisher,
         pair_id: pairId,
@@ -145,13 +148,16 @@ export default function transform({ header, events }: Block) {
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
         block_timestamp,
         timestamp,
+        event_index: eventIndex,
         source,
         publisher,
         pair_id: pairId,
         price,
         volume,
       };
+
       submittedSpotEntryEvents.push(submittedSpotEntryEvent);
+      eventIndex += 1;
     }
   }
 

@@ -12,8 +12,9 @@ const LIQUIDATION_SELECTOR =
   `0x0238a25785a13ab3138feb8f8f517e5a21a377cc1ad47809e9fd5e76daf01df7`;
 const LIQUIDATION_EVENT_DATA_LENGTH = 7;
 
-interface Liquidation {
+export interface Liquidation {
   block_number: string;
+  index: number;
   block_timestamp: string;
   transaction_hash: `0x${string}`;
   liquidated_user_address: `0x${string}`;
@@ -62,9 +63,11 @@ export default function transform({ header, events }: Block) {
     const block_number = header.blockNumber;
     const block_timestamp = header.timestamp;
     const transaction_hash = transaction.meta.hash;
+    const eventIndex = event.index;
     if (
       !event.data || event.data.length !== LIQUIDATION_EVENT_DATA_LENGTH ||
-      !block_number || !block_timestamp || !transaction_hash
+      !block_number || !block_timestamp || !transaction_hash ||
+      eventIndex === undefined
     ) {
       continue;
     }
@@ -81,6 +84,7 @@ export default function transform({ header, events }: Block) {
 
     const liquidation: Liquidation = {
       block_number,
+      index: eventIndex,
       block_timestamp,
       transaction_hash,
       liquidated_user_address: liquidatedUserAddress,

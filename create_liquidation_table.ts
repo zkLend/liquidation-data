@@ -36,7 +36,6 @@ await client.connect();
 
 await client.queryArray(`
   CREATE TABLE IF NOT EXISTS liquidations (
-    block_number bigint NOT NULL,
     block_timestamp timestamp NOT NULL,
     transaction_hash bytea NOT NULL,
 
@@ -49,6 +48,9 @@ await client.queryArray(`
     -- debt_token_value
     _cursor bigint -- REQUIRED: Apibara requires the target table to have a _cursor bigint column. This column is used to track at which block a row is inserted to handle chain reorganizations.
   );
+`);
+await client.queryArray(`
+  CREATE INDEX IF NOT EXISTS liquidations_block_timestamp_index ON liquidations (block_timestamp);
 `);
 
 await client.end();

@@ -37,7 +37,8 @@ await client.connect();
 await client.queryArray(`
   CREATE TABLE IF NOT EXISTS submitted_spot_entries (
     block_timestamp timestamp NOT NULL,
-    timestamp bytea NOT NULL, 
+    timestamp bytea NOT NULL,
+    event_index bigint NOT NULL,
     source bytea NOT NULL,
     publisher bytea NOT NULL,
     pair_id bytea NOT NULL,
@@ -45,6 +46,9 @@ await client.queryArray(`
     volume bytea NOT NULL,
     _cursor bigint -- REQUIRED: Apibara requires the target table to have a _cursor bigint column. This column is used to track at which block a row is inserted to handle chain reorganizations.
   );
+`);
+await client.queryArray(`
+  CREATE INDEX IF NOT EXISTS submitted_spot_entries_timestamp_index ON submitted_spot_entries (timestamp);
 `);
 
 await client.end();
