@@ -43,10 +43,10 @@ await client.queryArray(`
 
     liquidated_user_address bytea NOT NULL,
     collateral_token_address bytea NOT NULL, 
-    collateral_token_amount bigint NOT NULL,
+    collateral_token_amount bytea NOT NULL,
     -- collateral_token_value
     debt_token_address bytea NOT NULL,
-    debt_token_amount bigint NOT NULL,
+    debt_token_amount bytea NOT NULL,
     -- debt_token_value
     _cursor bigint -- REQUIRED: Apibara requires the target table to have a _cursor bigint column. This column is used to track at which block a row is inserted to handle chain reorganizations.
   );

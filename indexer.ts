@@ -13,17 +13,18 @@ const LIQUIDATION_SELECTOR =
 const LIQUIDATION_EVENT_DATA_LENGTH = 7;
 
 interface Liquidation {
-  block_number: bigint;
-  block_timestamp: bigint;
+  block_number: string;
+  block_timestamp: string;
   transaction_hash: `0x${string}`;
   liquidated_user_address: `0x${string}`;
   collateral_token_address: `0x${string}`;
-  collateral_token_amount: bigint;
+  collateral_token_amount: `0x${string}`;
   debt_token_address: `0x${string}`;
-  debt_token_amount: bigint;
+  debt_token_amount: `0x${string}`;
 }
 
 const filter: Filter = {
+  header: {},
   events: [
     {
       fromAddress: MARKET_CONTRACT,
@@ -79,18 +80,20 @@ export default function transform({ header, events }: Block) {
     ] = event.data;
 
     const liquidation: Liquidation = {
-      block_number: BigInt(block_number),
-      block_timestamp: BigInt(block_timestamp),
+      block_number,
+      block_timestamp,
       transaction_hash,
       liquidated_user_address: liquidatedUserAddress,
       collateral_token_address: collateralTokenAddress,
-      collateral_token_amount: BigInt(collateralTokenAmount),
+      collateral_token_amount: collateralTokenAmount,
       debt_token_address: debtTokenAddress,
-      debt_token_amount: BigInt(debtFaceAmount),
+      debt_token_amount: debtFaceAmount,
     };
 
     liquidations.push(liquidation);
   }
+
+  console.log(liquidations);
 
   return liquidations;
 }
