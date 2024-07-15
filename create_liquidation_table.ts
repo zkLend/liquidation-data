@@ -1,4 +1,3 @@
-// deno. connect with postgres
 import { Client } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 
