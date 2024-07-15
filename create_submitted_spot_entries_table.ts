@@ -37,6 +37,7 @@ await client.connect();
 
 await client.queryArray(`
   CREATE TABLE IF NOT EXISTS submitted_spot_entries (
+    block_timestamp timestamp NOT NULL,
     timestamp bytea NOT NULL, 
     source bytea NOT NULL,
     publisher bytea NOT NULL,

@@ -16,6 +16,7 @@ const SUBMITTED_SPOT_ENTRY_SELECTOR =
 const SUBMITTED_SPOT_ENTRY_EVENT_DATA_LENGTH = 6;
 
 interface SubmittedSpotEntry {
+  block_timestamp: string;
   timestamp: `0x${string}`;
   source: `0x${string}`;
   publisher: `0x${string}`;
@@ -114,6 +115,7 @@ export default function transform({ header, events }: Block) {
       }
 
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
+        block_timestamp,
         timestamp,
         source,
         publisher,
@@ -141,6 +143,7 @@ export default function transform({ header, events }: Block) {
       }
 
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
+        block_timestamp,
         timestamp,
         source,
         publisher,
