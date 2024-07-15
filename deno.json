@@ -1,5 +1,6 @@
 {
   "tasks": {
-    "create:liquidation-table": "deno run --watch create_liquidaiton_table.ts"
+    "create:liquidation-table": "deno run --watch create_liquidaiton_table.ts",
+    "create:submitted-spot-entries-table": "deno run --watch create_submitted_spot_entries_table.ts"
   }
 }
