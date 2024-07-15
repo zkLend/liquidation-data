@@ -48,7 +48,7 @@ export const config: Config = {
 
 export default function transform({ header, events }: Block) {
   if (!events || events.length === 0 || !header) {
-    return;
+    return [];
   }
 
   const liquidations: Liquidation[] = [];
