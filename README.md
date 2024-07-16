@@ -19,5 +19,6 @@ deno run create_liquidation_table.ts
 export APIBARA_KEY=<Get the API key from Apibara dashboard>
 export POSTGRES_CONNECTION_STRING=postgresql://lemmein:lemmein@localhost:5432/zklend
 
-apibara run indexer.ts -A "${APIBARA_KEY}"
+apibara run liquidations_indexer.ts -A "${APIBARA_KEY}"
+apibara run pragma_indexer.ts -A "${APIBARA_KEY}"
 ```
