@@ -17,7 +17,7 @@ const SUBMITTED_SPOT_ENTRY_EVENT_DATA_LENGTH = 6;
 
 export interface SubmittedSpotEntry {
   block_timestamp: string;
-  timestamp: `0x${string}`;
+  source_timestamp: string;
   event_index: number;
   source: `0x${string}`;
   publisher: `0x${string}`;
@@ -104,7 +104,7 @@ export default function transform({ header, events }: Block) {
       BigInt(fromAddress) === BigInt(PRAGMA_V0_CONTRACT)
     ) {
       const [
-        timestamp,
+        source_timestamp,
         source,
         publisher,
         pairId,
@@ -118,7 +118,7 @@ export default function transform({ header, events }: Block) {
 
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
         block_timestamp,
-        timestamp,
+        source_timestamp,
         event_index: eventIndex,
         source,
         publisher,
@@ -132,7 +132,7 @@ export default function transform({ header, events }: Block) {
       BigInt(fromAddress) === BigInt(PRAGMA_V1_CONTRACT)
     ) {
       const [
-        timestamp,
+        source_timestamp,
         source,
         publisher,
         // Pragma V1 has a different order of event data
@@ -147,7 +147,7 @@ export default function transform({ header, events }: Block) {
 
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
         block_timestamp,
-        timestamp,
+        source_timestamp: convertTimestamp(source_timestamp).toISOString(),
         event_index: eventIndex,
         source,
         publisher,
@@ -157,11 +157,16 @@ export default function transform({ header, events }: Block) {
       };
 
       submittedSpotEntryEvents.push(submittedSpotEntryEvent);
-      eventIndex += 1;
     }
+    eventIndex += 1;
   }
 
   console.log(submittedSpotEntryEvents);
 
   return submittedSpotEntryEvents;
+}
+
+function convertTimestamp(timestamp: `0x${string}`): Date {
+  const timestampNumber = BigInt(timestamp);
+  return new Date(Number(timestampNumber) * 1000);
 }

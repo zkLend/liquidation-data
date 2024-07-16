@@ -3,13 +3,22 @@ import {
   QueryObjectResult,
 } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import { SubmittedSpotEntry } from "./pragma_indexer.ts";
-import { Liquidation } from "./liquidations_indexer.ts";
 
 interface SpotPriceEntry {
   timestamp: number; // unix epoch in seconds
   source: bigint;
   price: bigint;
+}
+
+interface SerializedSubmittedSpotEntry {
+  block_timestamp: Date;
+  source_timestamp: Date;
+  event_index: bigint;
+  source: Uint8Array;
+  publisher: Uint8Array;
+  pair_id: Uint8Array;
+  price: Uint8Array;
+  volume: Uint8Array;
 }
 
 const env = await load();
@@ -112,17 +121,33 @@ class PriceWorkSheet {
 
 async function querySubmittedSpotEntries() {
   let last: null | {
-    timestamp: `0x${string}`;
-    index: number;
+    sourceTimestamp: Date;
+    index: bigint;
   } = null;
+
+  let totalRows = 0;
 
   while (true) {
     const query = last === null
-      ? `SELECT * FROM submitted_spot_entries ORDER BY timestamp, event_index LIMIT 1000`
-      : `SELECT * FROM submitted_spot_entries WHERE timestamp > ${last.timestamp} AND id > ${last.index} ORDER BY timestamp, event_index LIMIT 1000`;
+      ? `SELECT * FROM submitted_spot_entries ORDER BY source_timestamp, event_index LIMIT 1000`
+      : `SELECT * FROM submitted_spot_entries 
+        WHERE (
+          source_timestamp = to_timestamp('${
+        formatYYYY_MM_DD_HH_MI_SS(last.sourceTimestamp)
+      }', 'YYYY-MM-DD HH:MI:SS') 
+          AND event_index > ${last.index}
+        ) 
+        OR 
+          source_timestamp > to_timestamp('${
+        formatYYYY_MM_DD_HH_MI_SS(last.sourceTimestamp)
+      }', 'YYYY-MM-DD HH:MI:SS') 
+        ORDER BY 
+          source_timestamp, event_index LIMIT 1000`;
 
-    const result: QueryObjectResult<SubmittedSpotEntry> = await client
-      .queryObject<SubmittedSpotEntry>(
+    console.log(query);
+
+    const result: QueryObjectResult<SerializedSubmittedSpotEntry> = await client
+      .queryObject<SerializedSubmittedSpotEntry>(
         query,
       );
 
@@ -130,20 +155,34 @@ async function querySubmittedSpotEntries() {
       break;
     }
 
+    totalRows += result.rows.length;
+
     for (const row of result.rows) {
       console.log(row);
     }
 
     const {
       event_index: lastIndex,
-      timestamp: lastTimestamp,
+      source_timestamp: lastTimestamp,
     } = result.rows[result.rows.length - 1];
     last = {
-      timestamp: lastTimestamp,
+      sourceTimestamp: lastTimestamp,
       index: lastIndex,
     };
     console.log(`Last id: ${lastTimestamp}-${lastIndex}`);
+    console.log(`Total rows: ${totalRows}`);
   }
 }
 
 await querySubmittedSpotEntries();
+
+function formatYYYY_MM_DD_HH_MI_SS(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
