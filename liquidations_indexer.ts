@@ -16,8 +16,8 @@ const LIQUIDATION_EVENT_DATA_LENGTH = 7;
 export interface Liquidation {
   index: number;
   block_timestamp: number;
-  transaction_hash: `0x${string}`;
-  liquidated_user_address: `0x${string}`;
+  transaction_hash: string;
+  liquidated_user_address: string;
   collateral_token:
     typeof tokenAddressToToken[keyof typeof tokenAddressToToken];
   collateral_token_amount: number;
@@ -63,11 +63,11 @@ export default function transform({ header, events }: Block) {
   ) {
     const block_number = header.blockNumber;
     const block_timestamp = header.timestamp;
-    const transaction_hash = transaction.meta.hash;
+    const transactionHash = transaction.meta.hash;
     const eventIndex = event.index;
     if (
       !event.data || event.data.length !== LIQUIDATION_EVENT_DATA_LENGTH ||
-      !block_number || !block_timestamp || !transaction_hash ||
+      !block_number || !block_timestamp || !transactionHash ||
       eventIndex === undefined
     ) {
       continue;
@@ -86,8 +86,8 @@ export default function transform({ header, events }: Block) {
     const liquidation: Liquidation = {
       index: eventIndex,
       block_timestamp: new Date(block_timestamp).getTime() / 1000,
-      transaction_hash,
-      liquidated_user_address: liquidatedUserAddress,
+      transaction_hash: strip0x(transactionHash),
+      liquidated_user_address: strip0x(liquidatedUserAddress),
       collateral_token: tokenAddressToToken[Number(collateralTokenAddress)],
       collateral_token_amount: Number(collateralTokenAmount),
       debt_token: tokenAddressToToken[Number(debtTokenAddress)],
@@ -97,7 +97,9 @@ export default function transform({ header, events }: Block) {
     liquidations.push(liquidation);
   }
 
-  console.log(liquidations);
-
   return liquidations;
+}
+
+function strip0x(hex: string) {
+  return hex.startsWith("0x") ? hex.slice(2) : hex;
 }

@@ -37,9 +37,9 @@ await client.connect();
 await client.queryArray(`
   CREATE TABLE IF NOT EXISTS liquidations (
     block_timestamp bigint NOT NULL,
-    transaction_hash bytea NOT NULL,
+    transaction_hash varchar(64) NOT NULL,
 
-    liquidated_user_address bytea NOT NULL,
+    liquidated_user_address varchar(64) NOT NULL,
     collateral_token varchar(10) NOT NULL, 
     collateral_token_amount decimal NOT NULL, 
     -- collateral_token_value

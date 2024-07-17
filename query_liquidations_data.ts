@@ -4,7 +4,8 @@ import {
 } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import { pairIdToToken, tokenSymbolToDecimals } from "./constants.ts";
-import { PRAGMA_V0_END_BLOCK } from "./pragma_indexer.ts";
+
+const PRAGMA_V0_END_BLOCK_TIMESTAMP = 1706608996;
 
 interface SpotPriceEntry {
   timestamp: number;
@@ -25,12 +26,24 @@ interface SerializedSubmittedSpotEntry {
 
 interface SerializedLiquidation {
   block_timestamp: number;
-  transaction_hash: Uint8Array;
-  liquidated_user_address: Uint8Array;
+  transaction_hash: string;
+  liquidated_user_address: string;
   collateral_token: typeof pairIdToToken[keyof typeof pairIdToToken];
   collateral_token_amount: number;
   debt_token: typeof pairIdToToken[keyof typeof pairIdToToken];
   debt_token_amount: number;
+}
+
+interface LiquidationCsvRow {
+  block_timestamp: string;
+  transaction_hash: string;
+  liquidated_user_address: string;
+  collateral_token: typeof pairIdToToken[keyof typeof pairIdToToken];
+  collateral_token_amount: string;
+  collateral_token_value: string;
+  debt_token: typeof pairIdToToken[keyof typeof pairIdToToken];
+  debt_token_amount: string;
+  debt_token_value: string;
 }
 
 const env = await load();
@@ -121,7 +134,7 @@ class PriceWorkSheet {
     const prices = this.worksheet
       .filter((e) => {
         return e.timestamp >
-          conservativeCurrentTimestamp - this.BACKWARD_TIMESTAMP_BUFFER;
+          Number(conservativeCurrentTimestamp) - Number(this.BACKWARD_TIMESTAMP_BUFFER);
       })
       .map((e) => e.price);
 
@@ -157,10 +170,30 @@ class PriceWorksheetManager {
   }
 }
 
-async function iterateAllBlockTimestamps() {
+async function iterateAllRecords() {
   let lastTimestamp: bigint | null = null;
   let count = 0;
   const priceWorksheetManager = new PriceWorksheetManager();
+  const liquidationsCsv = await Deno.open("./liquidations.csv", {
+    write: true,
+    create: true,
+    truncate: true,
+  });
+  const header = [
+    `block_timestamp`,
+    `transaction_hash`,
+    `liquidated_user_address`,
+    `collateral_token`,
+    `collateral_token_amount`,
+    `collateral_token_value`,
+    `debt_token`,
+    `debt_token_amount`,
+    `debt_token_value`,
+  ];
+  await Deno.write(
+    liquidationsCsv.rid,
+    new TextEncoder().encode(header.join(",") + "\n"),
+  );
 
   while (true) {
     const query = lastTimestamp === null
@@ -175,6 +208,8 @@ async function iterateAllBlockTimestamps() {
     if (result.rows.length === 0) {
       break;
     }
+
+    let liquidationCsvRows: LiquidationCsvRow[] = [];
 
     for (const uniqueTimestampRow of result.rows) {
       const [submittedSpotEntries, liquidations] = await Promise.all([
@@ -203,7 +238,20 @@ async function iterateAllBlockTimestamps() {
           Number(collateralTokenPrice),
           Number(debtTokenPrice),
         );
-        console.log(values);
+
+        const liquidationCsvRow: LiquidationCsvRow = {
+          block_timestamp: String(liquidation.block_timestamp),
+          transaction_hash: liquidation.transaction_hash,
+          liquidated_user_address: liquidation.liquidated_user_address,
+          collateral_token: liquidation.collateral_token,
+          collateral_token_amount: String(liquidation.collateral_token_amount),
+          collateral_token_value: String(values.collateralTokenValue),
+          debt_token: liquidation.debt_token,
+          debt_token_amount: String(liquidation.debt_token_amount),
+          debt_token_value: String(values.debtTokenValue),
+        };
+
+        liquidationCsvRows.push(liquidationCsvRow);
       }
 
       for (const entry of submittedSpotEntries) {
@@ -217,12 +265,37 @@ async function iterateAllBlockTimestamps() {
           price: entry.price,
         });
       }
+
+      if (liquidationCsvRows.length > 0) {
+        const stringifiedLiquidationCsvRows = liquidationCsvRows.map((row) => {
+          return [
+            row.block_timestamp,
+            row.transaction_hash,
+            row.liquidated_user_address,
+            row.collateral_token,
+            row.collateral_token_amount,
+            row.collateral_token_value,
+            row.debt_token,
+            row.debt_token_amount,
+            row.debt_token_value,
+          ].join(",");
+        }).join("\n");
+
+        await Deno.write(
+          liquidationsCsv.rid,
+          new TextEncoder().encode(stringifiedLiquidationCsvRows + "\n"),
+        );
+      }
+
+      liquidationCsvRows = [];
     }
 
     count += result.rows.length;
     console.log(count);
     lastTimestamp = result.rows[result.rows.length - 1].block_timestamp;
   }
+
+  liquidationsCsv.close();
 }
 
 async function querySubmittedSpotEntries(
@@ -260,7 +333,7 @@ function getPriceDecimals(
   blockTimestamp: number,
 ) {
   if (
-    blockTimestamp > PRAGMA_V0_END_BLOCK &&
+    blockTimestamp > PRAGMA_V0_END_BLOCK_TIMESTAMP &&
     "priceV1Decimals" in tokenSymbolToDecimals[tokenSymbol]
   ) {
     // @ts-ignore: stupid TS typing
@@ -312,4 +385,4 @@ function calculateLiquidationValues(
   };
 }
 
-iterateAllBlockTimestamps();
+iterateAllRecords();
