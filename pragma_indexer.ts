@@ -3,6 +3,7 @@ import type {
   Filter,
 } from "https://esm.sh/@apibara/indexer@0.4.1/starknet";
 import type { Config } from "https://esm.sh/@apibara/indexer@0.4.1";
+import { pairIdToToken } from "./constants.ts";
 
 // 01 Jan 2024 HKT 00:00:45
 const JAN_01_2024_BLOCK = 489712;
@@ -16,13 +17,13 @@ const SUBMITTED_SPOT_ENTRY_SELECTOR =
 const SUBMITTED_SPOT_ENTRY_EVENT_DATA_LENGTH = 6;
 
 export interface SubmittedSpotEntry {
-  block_timestamp: string;
-  source_timestamp: string;
+  block_timestamp: number;
+  source_timestamp: number;
   event_index: number;
   source: `0x${string}`;
   publisher: `0x${string}`;
-  pair_id: `0x${string}`;
-  price: `0x${string}`;
+  token_symbol: typeof pairIdToToken[keyof typeof pairIdToToken];
+  price: string;
   volume: `0x${string}`;
 }
 
@@ -43,23 +44,6 @@ const filter: Filter = {
     },
   ],
 };
-
-const allowedPairIds = new Set([
-  // ETH
-  `0x000000000000000000000000000000000000000000000000004554482f555344`,
-  // USDC
-  `0x000000000000000000000000000000000000000000000000555344432f555344`,
-  // WBTC
-  `0x000000000000000000000000000000000000000000000000004254432f555344`,
-  // USDT
-  `0x000000000000000000000000000000000000000000000000555344542f555344`,
-  // WSTETH
-  `0x000000000000000000000000000000000000000000005753544554482f555344`,
-  // STRK
-  `0x0000000000000000000000000000000000000000000000005354524b2f555344`,
-  // DAI & DAIV0
-  `0x000000000000000000000000000000000000000000000000004441492f555344`,
-].map((pairId) => Number(pairId)));
 
 export const config: Config = {
   streamUrl: "https://mainnet.starknet.a5a.ch",
@@ -112,18 +96,18 @@ export default function transform({ header, events }: Block) {
         volume,
       ] = event.data;
 
-      if (!allowedPairIds.has(Number(pairId))) {
+      if (!(Number(pairId) in pairIdToToken)) {
         continue;
       }
 
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
-        block_timestamp,
-        source_timestamp,
+        block_timestamp: new Date(block_timestamp).getTime() / 1000,
+        source_timestamp: Number(source_timestamp),
         event_index: eventIndex,
         source,
         publisher,
-        pair_id: pairId,
-        price,
+        token_symbol: pairIdToToken[Number(pairId)],
+        price: Math.floor(Number(price)).toFixed(0),
         volume,
       };
       submittedSpotEntryEvents.push(submittedSpotEntryEvent);
@@ -141,18 +125,18 @@ export default function transform({ header, events }: Block) {
         volume,
       ] = event.data;
 
-      if (!allowedPairIds.has(Number(pairId))) {
+      if (!(Number(pairId) in pairIdToToken)) {
         continue;
       }
 
       const submittedSpotEntryEvent: SubmittedSpotEntry = {
-        block_timestamp,
-        source_timestamp: convertTimestamp(source_timestamp).toISOString(),
+        block_timestamp: new Date(block_timestamp).getTime() / 1000,
+        source_timestamp: Number(source_timestamp),
         event_index: eventIndex,
         source,
         publisher,
-        pair_id: pairId,
-        price,
+        token_symbol: pairIdToToken[Number(pairId)],
+        price: Math.floor(Number(price)).toFixed(0),
         volume,
       };
 
@@ -164,9 +148,4 @@ export default function transform({ header, events }: Block) {
   console.log(submittedSpotEntryEvents);
 
   return submittedSpotEntryEvents;
-}
-
-function convertTimestamp(timestamp: `0x${string}`): Date {
-  const timestampNumber = BigInt(timestamp);
-  return new Date(Number(timestampNumber) * 1000);
 }

@@ -3,6 +3,7 @@ import type {
   Filter,
 } from "https://esm.sh/@apibara/indexer@0.4.1/starknet";
 import type { Config } from "https://esm.sh/@apibara/indexer@0.4.1";
+import { tokenAddressToToken } from "./constants.ts";
 
 // 01 Jan 2024 HKT 00:00:45
 const JAN_01_2024_BLOCK = 489712;
@@ -13,15 +14,15 @@ const LIQUIDATION_SELECTOR =
 const LIQUIDATION_EVENT_DATA_LENGTH = 7;
 
 export interface Liquidation {
-  block_number: string;
   index: number;
-  block_timestamp: string;
+  block_timestamp: number;
   transaction_hash: `0x${string}`;
   liquidated_user_address: `0x${string}`;
-  collateral_token_address: `0x${string}`;
-  collateral_token_amount: `0x${string}`;
-  debt_token_address: `0x${string}`;
-  debt_token_amount: `0x${string}`;
+  collateral_token:
+    typeof tokenAddressToToken[keyof typeof tokenAddressToToken];
+  collateral_token_amount: number;
+  debt_token: typeof tokenAddressToToken[keyof typeof tokenAddressToToken];
+  debt_token_amount: number;
 }
 
 const filter: Filter = {
@@ -83,15 +84,14 @@ export default function transform({ header, events }: Block) {
     ] = event.data;
 
     const liquidation: Liquidation = {
-      block_number,
       index: eventIndex,
-      block_timestamp,
+      block_timestamp: new Date(block_timestamp).getTime() / 1000,
       transaction_hash,
       liquidated_user_address: liquidatedUserAddress,
-      collateral_token_address: collateralTokenAddress,
-      collateral_token_amount: collateralTokenAmount,
-      debt_token_address: debtTokenAddress,
-      debt_token_amount: debtFaceAmount,
+      collateral_token: tokenAddressToToken[Number(collateralTokenAddress)],
+      collateral_token_amount: Number(collateralTokenAmount),
+      debt_token: tokenAddressToToken[Number(debtTokenAddress)],
+      debt_token_amount: Number(debtFaceAmount),
     };
 
     liquidations.push(liquidation);
