@@ -157,58 +157,6 @@ class PriceWorksheetManager {
   }
 }
 
-// async function querySubmittedSpotEntries() {
-//   let last: null | {
-//     sourceTimestamp: bigint;
-//     index: bigint;
-//   } = null;
-
-//   let totalRows = 0;
-
-//   while (true) {
-//     const query = last === null
-//       // Ignore possibly first few liquidations
-//       ? `SELECT * FROM submitted_spot_entries ORDER BY source_timestamp, event_index LIMIT 1000`
-//       : `SELECT * FROM submitted_spot_entries
-//         WHERE (
-//           source_timestamp = ${last.sourceTimestamp}
-//           AND event_index > ${last.index}
-//         )
-//         OR
-//           source_timestamp > ${last.sourceTimestamp}
-//         ORDER BY
-//           source_timestamp, event_index LIMIT 1000`;
-
-//     console.log(query);
-
-//     const result: QueryObjectResult<SerializedSubmittedSpotEntry> = await client
-//       .queryObject<SerializedSubmittedSpotEntry>(
-//         query,
-//       );
-
-//     if (result.rows.length === 0) {
-//       break;
-//     }
-
-//     totalRows += result.rows.length;
-
-//     for (const row of result.rows) {
-//       console.log(row.source_timestamp);
-//     }
-
-//     const {
-//       event_index: lastIndex,
-//       source_timestamp: lastTimestamp,
-//     } = result.rows[result.rows.length - 1];
-//     last = {
-//       sourceTimestamp: lastTimestamp,
-//       index: lastIndex,
-//     };
-//     console.log(`Last id: ${lastTimestamp}-${lastIndex}`);
-//     console.log(`Total rows: ${totalRows}`);
-//   }
-// }
-
 async function iterateAllBlockTimestamps() {
   let lastTimestamp: bigint | null = null;
   let count = 0;
@@ -303,8 +251,6 @@ async function queryLiquidations(
   return (result.rows);
 }
 
-iterateAllBlockTimestamps();
-
 function uint8ArrayToBigInt(uint8Array: Uint8Array) {
   return uint8Array.reduce((acc, value) => (acc << 8n) + BigInt(value), 0n);
 }
@@ -365,3 +311,5 @@ function calculateLiquidationValues(
     debtTokenValue,
   };
 }
+
+iterateAllBlockTimestamps();
