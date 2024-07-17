@@ -3,7 +3,8 @@ import {
   QueryObjectResult,
 } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import { pairIdToToken } from "./constants.ts";
+import { pairIdToToken, tokenSymbolToDecimals } from "./constants.ts";
+import { PRAGMA_V0_END_BLOCK } from "./pragma_indexer.ts";
 
 interface SpotPriceEntry {
   timestamp: number;
@@ -236,7 +237,25 @@ async function iterateAllBlockTimestamps() {
       ]);
 
       for (const liquidation of liquidations) {
-        console.log(liquidation);
+        const collateralTokenPrice = priceWorksheetManager.getWorksheet(
+          liquidation.collateral_token,
+        ).getMedianPrice(liquidation.block_timestamp);
+        const debtTokenPrice = priceWorksheetManager.getWorksheet(
+          liquidation.debt_token,
+        ).getMedianPrice(liquidation.block_timestamp);
+
+        if (!collateralTokenPrice || !debtTokenPrice) {
+          // Ignore first few liquidations where we don't have price data
+          console.log("Missing price for liquidation");
+          continue;
+        }
+
+        const values = calculateLiquidationValues(
+          liquidation,
+          Number(collateralTokenPrice),
+          Number(debtTokenPrice),
+        );
+        console.log(values);
       }
 
       for (const entry of submittedSpotEntries) {
@@ -249,11 +268,6 @@ async function iterateAllBlockTimestamps() {
           source: uint8ArrayToBigInt(entry.source),
           price: entry.price,
         });
-
-        console.log(
-          worksheet.tokenSymbol,
-          worksheet.getMedianPrice(Number(uniqueTimestampRow.block_timestamp)),
-        );
       }
     }
 
@@ -293,4 +307,61 @@ iterateAllBlockTimestamps();
 
 function uint8ArrayToBigInt(uint8Array: Uint8Array) {
   return uint8Array.reduce((acc, value) => (acc << 8n) + BigInt(value), 0n);
+}
+
+function getPriceDecimals(
+  tokenSymbol: keyof typeof tokenSymbolToDecimals,
+  blockTimestamp: number,
+) {
+  if (
+    blockTimestamp > PRAGMA_V0_END_BLOCK &&
+    "priceV1Decimals" in tokenSymbolToDecimals[tokenSymbol]
+  ) {
+    // @ts-ignore: stupid TS typing
+    return tokenSymbolToDecimals[tokenSymbol]["priceV1Decimals"] as number;
+  } else {
+    return tokenSymbolToDecimals[tokenSymbol].priceV0Decimals;
+  }
+}
+
+function getTokenDecimals(
+  tokenSymbol: keyof typeof tokenSymbolToDecimals,
+) {
+  return tokenSymbolToDecimals[tokenSymbol].tokenDecimals;
+}
+
+function calculateLiquidationValues(
+  liquidation: SerializedLiquidation,
+  collateralTokenPrice: number,
+  debtTokenPrice: number,
+) {
+  const collateralTokenPriceDecimals = getPriceDecimals(
+    liquidation.collateral_token,
+    liquidation.block_timestamp,
+  );
+  const debtTokenPriceDecimals = getPriceDecimals(
+    liquidation.debt_token,
+    liquidation.block_timestamp,
+  );
+  const collateralTokenDecimals = getTokenDecimals(
+    liquidation.collateral_token,
+  );
+  const debtTokenDecimals = getTokenDecimals(
+    liquidation.debt_token,
+  );
+
+  const collateralTokenAmount = liquidation.collateral_token_amount /
+    10 ** collateralTokenDecimals;
+  const debtTokenAmount = liquidation.debt_token_amount /
+    10 ** debtTokenDecimals;
+
+  const collateralTokenValue = collateralTokenAmount * collateralTokenPrice /
+    10 ** collateralTokenPriceDecimals;
+  const debtTokenValue = debtTokenAmount * debtTokenPrice /
+    10 ** debtTokenPriceDecimals;
+
+  return {
+    collateralTokenValue,
+    debtTokenValue,
+  };
 }

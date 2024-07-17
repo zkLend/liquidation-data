@@ -87,4 +87,4 @@ export const tokenSymbolToDecimals = {
     tokenDecimals: 18,
     priceV0Decimals: 8,
   },
-};
+} as const;

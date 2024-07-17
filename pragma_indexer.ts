@@ -7,7 +7,7 @@ import { pairIdToToken } from "./constants.ts";
 
 // 01 Jan 2024 HKT 00:00:45
 const JAN_01_2024_BLOCK = 489712;
-const PRAGMA_V0_END_BLOCK = 524957;
+export const PRAGMA_V0_END_BLOCK = 524957;
 const PRAGMA_V0_CONTRACT =
   `0x0346c57f094d641ad94e43468628d8e9c574dcb2803ec372576ccc60a40be2c4`;
 const PRAGMA_V1_CONTRACT =
